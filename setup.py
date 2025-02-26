@@ -1,7 +1,5 @@
 from setuptools import find_packages, setup
 
-from flittpayments.configuration import __version__
-
 desc = """
     Flitt python sdk. 
     Docs   - https://https://docs.flitt.com/
@@ -15,7 +13,7 @@ requires_list = [
 
 setup(
     name='flittpayments',
-    version=__version__,
+    version='1.0.4',
     url='https://github.com/flittpayments/python/',
     license='MIT',
     description='Python SDK for Flitt clients.',
@@ -35,4 +33,9 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
     ])
