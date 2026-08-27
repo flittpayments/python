@@ -5,8 +5,6 @@ import re
 import json
 import base64
 import six.moves.urllib as urllib
-import xml.sax.saxutils as saxutils
-import defusedxml.ElementTree as ElementTree
 
 
 def to_b64(data):
@@ -23,20 +21,10 @@ def from_b64(data):
     return base64.b64decode(json.dumps(data).encode('utf-8')).decode('utf-8')
 
 
-def to_xml(data, start='<?xml version="1.0" encoding="UTF-8"?>'):
-    """
-    :param data: params to convert to xml
-    :param start: start xml string
-    :return: xml string
-    """
-    data = OrderedDict(sorted(data.items()))
-    return start + _data2xml(data)
-
-
 def to_json(data):
     """
     to json string
-    :param data: params to convert to xml
+    :param data: params to convert to json
     :return: json string
     """
     return json.dumps(data)
@@ -88,83 +76,3 @@ def from_form(form_string):
     :return: data dict
     """
     return dict(urllib.parse.parse_qsl(form_string))
-
-
-def from_xml(xml):
-    """
-    :param xml: xml string to encode
-    :return: data dict
-    """
-    element = ElementTree.fromstring(xml)
-    return _xml_to_dict(element.tag, _parse(element), element.attrib)
-
-
-def _data2xml(d):
-    result_list = list()
-
-    if isinstance(d, list):
-        for sub_elem in d:
-            result_list.append(_data2xml(sub_elem))
-
-        return ''.join(result_list)
-
-    if isinstance(d, dict):
-        for tag_name, sub_obj in d.items():
-            safe_tag = saxutils.escape(tag_name)
-            result_list.append("<%s>" % safe_tag)
-            result_list.append(_data2xml(sub_obj))
-            result_list.append("</%s>" % safe_tag)
-
-        return ''.join(result_list)
-
-    return saxutils.escape("%s" % d)
-
-
-def _parse(node):
-    tree = {}
-    try:
-        parsed_node = node.getchildren()
-    except AttributeError:
-        parsed_node = list(node)
-
-    for c in parsed_node:
-        c_tag = c.tag
-        c_attr = c.attrib
-        ctext = c.text.strip() if c.text is not None else ''
-        c_tree = _parse(c)
-
-        if not c_tree:
-            c_dict = _xml_to_dict(c_tag, ctext, c_attr)
-        else:
-            c_dict = _xml_to_dict(c_tag, c_tree, c_attr)
-        if c_tag not in tree:
-            tree.update(c_dict)
-            continue
-        atag = '@' + c_tag
-        atree = tree[c_tag]
-        if not isinstance(atree, list):
-            if not isinstance(atree, dict):
-                atree = {}
-            if atag in tree:
-                atree['#' + c_tag] = tree[atag]
-                del tree[atag]
-            tree[c_tag] = [atree]
-
-        if c_attr:
-            c_tree['#' + c_tag] = c_attr
-
-        tree[c_tag].append(c_tree)
-    return tree
-
-
-def _xml_to_dict(tag, value, attr=None):
-    ret = {tag: value}
-    if attr:
-        atag = '@' + tag
-        aattr = {}
-        for k, v in attr.items():
-            aattr[k] = v
-        ret[atag] = aattr
-        del atag
-        del aattr
-    return ret

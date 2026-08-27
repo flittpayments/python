@@ -3,6 +3,7 @@ from flittpayments.resources import Resource
 from datetime import datetime
 
 import flittpayments.helpers as helper
+import flittpayments.utils as utils
 
 
 class Pcidss(Resource):
@@ -91,23 +92,65 @@ class Payment(Resource):
 
     def reports(self, data):
         """
-        Method to get payment reports from date range
-        :param data: date range
-        :return: api response
+        Method to poll the Reports API (portal.flitt.com) for report data.
+        This is a separate service from the rest of this SDK: it
+        authenticates with application_id/key - NOT this Payment's Api
+        merchant_id/secret_key - via a short-lived bearer token obtained
+        from a signed request, not a per-request signature.
+        See https://docs.flitt.com/api/reports/
+        :param data: report request:
+            application_id, key - Reports application credentials
+            report_id - report id, required (see docs.flitt.com/api/reports/
+                for the available reports)
+            filters - optional; list of {'s': field, 'm': operand,
+                'v': value}. docs.flitt.com/api/reports/ lists this as
+                required, but the live API accepts an empty/omitted list
+                just fine (confirmed against report_id 1023 and 745) -
+                whether it's meaningful depends on the specific report_id
+            merchant_id - optional; a single merchant id. Omit to scope
+                the report to every merchant linked to application_id
+                instead
+            on_page, page - pagination, default 10/1
+        :return: {'data': [[...]], 'fields': [...], 'rows_count',
+            'rows_on_page', 'rows_page'} on success, or
+            {'error': ..., 'err_code': ...}
         """
-        path = '/reports/'
-        params = {
-            'date_from': data.get('date_from', ''),
-            'date_to': data.get('date_to', '')
+        application_id = data.get('application_id', '')
+        key = data.get('key', '')
+        helper.check_data({
+            'application_id': application_id,
+            'key': key,
+            'report_id': data.get('report_id', '')
+        })
+
+        date = str(datetime.now())
+        token_data = {
+            'application_id': application_id,
+            'date': date,
+            'signature': helper.get_reports_signature(
+                key, application_id, date)
         }
-        helper.check_data(params)
-        """
-        from api only one response if data invalid "General Decline"
-        """
-        self._validate_reports_date(params)
-        params.update(data)
-        result = self.api.post(path, data=params, headers=self.__headers__)
-        return self.response(result)
+        token_result = self.api._request(
+            'https://portal.flitt.com/authorizer/token/application/get',
+            'POST', data=utils.to_json(token_data),
+            headers={'Content-Type': 'application/json'})
+        token = utils.from_json(token_result).get('token')
+
+        params = {
+            'report_id': data.get('report_id'),
+            'filters': data.get('filters', []),
+            'on_page': data.get('on_page', 10),
+            'page': data.get('page', 1)
+        }
+        if 'merchant_id' in data:
+            params['merchant_id'] = data['merchant_id']
+
+        result = self.api._request(
+            'https://portal.flitt.com/api/extend/company/report/',
+            'POST', data=utils.to_json(params),
+            headers={'Content-Type': 'application/json',
+                    'Authorization': 'Token %s' % token})
+        return utils.from_json(result)
 
     def recurring(self, data):
         """
@@ -129,19 +172,3 @@ class Payment(Resource):
         params.update(data)
         result = self.api.post(path, data=params, headers=self.__headers__)
         return self.response(result)
-
-    @staticmethod
-    def _validate_reports_date(date):
-        """
-        Validating date range
-        :param date: date
-        """
-        try:
-            date_from = datetime.strptime(
-                date['date_from'], '%d.%m.%Y %H:%M:%S')
-            date_to = datetime.strptime(
-                date['date_to'], '%d.%m.%Y %H:%M:%S')
-        except ValueError:
-            raise ValueError("Incorrect date format.")
-        if date_from > date_to:
-            raise ValueError("`date_from` can't be greater than `date_to`")

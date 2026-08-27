@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-from hashlib import sha1
+from hashlib import sha1, sha512
 from flittpayments.configuration import __sign_sep__ as sep
 from flittpayments.exceptions import RequestError
 
@@ -16,8 +16,6 @@ def get_data(data, req_type):
     """
     if req_type == 'json':
         return utils.to_json(data)
-    if req_type == 'xml':
-        return utils.to_xml(data)
     if req_type == 'form':
         return utils.to_form(data.get('request'))
 
@@ -29,7 +27,6 @@ def get_request_type(req_type):
     """
     types = {
         'json': 'application/json; charset=utf-8',
-        'xml': 'application/xml; charset=utf-8',
         'form': 'application/x-www-form-urlencoded; charset=utf-8'
     }
     return types.get(req_type, types['json'])
@@ -51,6 +48,20 @@ def get_signature(secret_key, params, protocol):
         data.extend([str(params[key]) for key in sorted(iter(params.keys()))
                      if params[key] != '' and not params[key] is None])
         return sha1(sep.join(data).encode('utf-8')).hexdigest()
+
+
+def get_reports_signature(key, application_id, date):
+    """
+    Signature for the Reports API's token endpoint (portal.flitt.com) -
+    a completely separate scheme from get_signature() above: SHA512 over
+    key|application_id|date, not SHA1/HMAC over merchant request params.
+    :param key: Reports application private key
+    :param application_id: Reports application id
+    :param date: any string, used only as a signature salt
+    :return: sha512 hex digest
+    """
+    raw = sep.join([str(key), str(application_id), str(date)])
+    return sha512(raw.encode('utf-8')).hexdigest()
 
 
 def get_desc(order_id):

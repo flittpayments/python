@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
-from flittpayments.configuration import (__api_url__, __protocol__, __r_type__)
+from flittpayments.configuration import (__api_url__, __protocol__, __r_type__,
+                                         __version__)
 from flittpayments import exceptions
 
 import os
@@ -20,7 +21,7 @@ _SENSITIVE_FIELDS = ('card_number', 'cvv2', 'receiver_iban')
 def _mask_sensitive(text):
     """
     Redact sensitive payment fields from a serialized request/response
-    body (json/xml/form) before it is written to the debug log.
+    body (json/form) before it is written to the debug log.
     :param text: serialized data string, or None
     :return: masked string safe for logging
     """
@@ -30,21 +31,19 @@ def _mask_sensitive(text):
     for field in _SENSITIVE_FIELDS:
         masked = re.sub(r'("%s"\s*:\s*")[^"]*(")' % field,
                         r'\1***\2', masked)
-        masked = re.sub(r'(<%s>)[^<]*(</%s>)' % (field, field),
-                        r'\1***\2', masked)
         masked = re.sub(r'(%s=)[^&]*' % field, r'\1***', masked)
     return masked
 
 
 class Api(object):
-    user_agent = 'Python SDK'
+    user_agent = 'FlittPay-python-sdk/%s' % __version__
 
     def __init__(self, **kwargs):
         """
         :param kwargs: args
         :arg merchant_id Merchant id numeric
         :arg secret_key Secret key string
-        :arg request_type request type allowed json, xml, form
+        :arg request_type request type allowed json, form
         :arg api_domain api domain
         :arg api_protocol allowed protocols 1.0, 2.0
         :arg timeout request timeout in seconds, default 30
@@ -61,6 +60,10 @@ class Api(object):
         self.api_protocol = kwargs.get('api_protocol', __protocol__)
         if self.api_protocol not in ('1.0', '2.0'):
             raise ValueError('Incorrect protocol version')
+        if self.request_type not in ('json', 'form'):
+            raise ValueError(
+                "Unsupported request_type '%s' (allowed: json, form). "
+                "XML support was removed in v2.0." % self.request_type)
         if self.api_protocol == '2.0' and self.request_type != 'json':
             raise ValueError('In protocol \'2.0\' only json allowed')
 

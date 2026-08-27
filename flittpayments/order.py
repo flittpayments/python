@@ -110,7 +110,7 @@ class Order(Resource):
     def _additional_info(status):
         """
         additional_info comes back as a nested object for JSON responses but
-        as a JSON-encoded string for XML/form responses; normalize to a dict.
+        as a JSON-encoded string for form responses; normalize to a dict.
         :param status: parsed Order.status() response
         :return: additional_info dict
         """
@@ -134,36 +134,23 @@ class Order(Resource):
         result = self.api.post(path, data=params, headers=self.__headers__)
         return self.response(result)
 
-    def transaction_list(self, data):
+    def fiscal_data(self, data):
         """
-        Method for getting order transaction list
-        :param data: order data
-        :return: api response
+        Method for polling order fiscalisation data. Fiscalisation is
+        available only in Uzbekistan; the order must already be captured,
+        or approved without preauth='Y'.
+        See https://docs.flitt.com/api/fiscal_data/
+        :param data: order data (order_id required)
+        :return: api response - response['fiscalisation_data'] is a dict
+            keyed by tax_id, each value holding status_code, message,
+            terminal_id, date, fiscal_sign, qr_code_url, type, receipt_id,
+            external, processed_date
         """
-        path = '/transaction_list/'
+        path = '/fiscal_data/'
         params = {
             'order_id': data.get('order_id', '')
         }
         helper.check_data(params)
         params.update(data)
-        """
-        only json allowed all other methods returns 500 error
-        """
-        self.api.request_type = 'json'
         result = self.api.post(path, data=params, headers=self.__headers__)
         return self.response(result)
-
-    def atol_logs(self, data):
-        """
-        Method for getting order atol logs
-        :param data: order data
-        :return: api response
-        """
-        path = '/get_atol_logs/'
-        params = {
-            'order_id': data.get('order_id', '')
-        }
-        helper.check_data(params)
-        params.update(data)
-        result = self.api.post(path, data=params, headers=self.__headers__)
-        return utils.from_json(result).get('response')

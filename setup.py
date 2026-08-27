@@ -1,20 +1,26 @@
+import re
 from setuptools import find_packages, setup
 
 desc = """
-    Flitt python sdk. 
+    Flitt python sdk.
     Docs   - https://https://docs.flitt.com/
     README - https://https://github.com/flittpayments/python/blob/master/README.md
   """
 
 requires_list = [
     'requests>=2.31.0',
-    'six>=1.12',
-    'defusedxml>=0.7.1'
+    'six>=1.12'
 ]
+
+# Read the version directly out of configuration.py's source text rather than
+# importing the package, so setup.py works even before its own dependencies
+# are installed (and can never drift from flittpayments.__version__).
+with open('flittpayments/configuration.py') as f:
+    __version__ = re.search(r"__version__\s*=\s*['\"]([^'\"]+)['\"]", f.read()).group(1)
 
 setup(
     name='flittpayments',
-    version='1.0.4',
+    version=__version__,
     url='https://github.com/flittpayments/python/',
     license='MIT',
     description='Python SDK for Flitt clients.',

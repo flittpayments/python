@@ -47,5 +47,11 @@
     "amount": "5000",
     "currency": "GEL",
     "payment_method": "x"
+  },
+  "reports_application": {
+    "application_id": "1019",
+    "key": "test",
+    "report_id": 745,
+    "merchant_id": 1549902
   }
 }

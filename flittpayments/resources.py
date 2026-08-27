@@ -45,8 +45,6 @@ class Resource(object):
             result = None
             if self.api.request_type == 'json':
                 result = utils.from_json(response).get('response', '')
-            if self.api.request_type == 'xml':
-                result = utils.from_xml(response).get('response', '')
             if self.api.request_type == 'form':
                 result = utils.from_form(response)
             return self._get_result(result)
