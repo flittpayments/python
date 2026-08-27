@@ -46,6 +46,25 @@ class OrderTest(TestCase):
         self.assertEqual(response.get('order_id'), self.order_id)
         self.assertEqual(response.get('capture_status'), 'captured')
 
+    def test_capture_full(self):
+        data = {
+            'order_id': self.order_id,
+            'currency': self.data['order_full_data']['currency']
+        }
+        response = self.order.capture_full(data)
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertEqual(response.get('order_id'), self.order_id)
+        self.assertEqual(response.get('capture_status'), 'captured')
+
+    def test_reverse_full(self):
+        data = {
+            'order_id': self.order_id,
+            'currency': self.data['order_full_data']['currency']
+        }
+        response = self.order.reverse_full(data)
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertIn('reverse_status', response)
+
     def test_settlement(self):
         self.api.api_protocol = '2.0'
         data = {
