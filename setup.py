@@ -7,8 +7,9 @@ desc = """
   """
 
 requires_list = [
-    'requests',
-    'six'
+    'requests>=2.31.0',
+    'six>=1.12',
+    'defusedxml>=0.7.1'
 ]
 
 setup(

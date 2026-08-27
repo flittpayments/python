@@ -32,5 +32,20 @@
     "card_number": "4444555566661111",
     "cvv2": "123",
     "expiry_date": "1224"
+  },
+  "payment_iban": {
+    "receiver_iban": "GE00TB0000000000000001",
+    "currency": "GEL",
+    "amount": "100"
+  },
+  "open_banking_data": {
+    "amount": "100",
+    "currency": "GEL",
+    "payment_method": "x"
+  },
+  "installments_data": {
+    "amount": "5000",
+    "currency": "GEL",
+    "payment_method": "x"
   }
 }

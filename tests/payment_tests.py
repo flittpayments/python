@@ -36,6 +36,13 @@ class PaymentTest(TestCase):
         self.assertEqual(response.get('response_status'), 'success')
         self.assertIn('order_status', response)
 
+    def test_ibancredit(self):
+        api = Api(merchant_id=1000, secret_key='testcredit')
+        payment = Payment(api=api)
+        response = payment.ibancredit(self.data['payment_iban'])
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertIn('order_status', response)
+
     def test_non3dpcidss_step_one(self):
         data = self.data['payment_pcidss_non3ds']
         response = self.pcidss.step_one(data)

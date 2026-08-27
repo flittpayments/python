@@ -57,7 +57,7 @@ class Checkout(Resource):
             "recurring_data": {
                 "every": 1, -> frequency of the recurring order (int)
                 "amount": 10000, -> amount of the recurring order (int)
-                "period": 'month', -> period of the recurring order ('day', 'month', 'year')
+                "period": 'month', -> period of the recurring order ('day', 'week', 'month')
                 "start_time": '2020-07-24', -> start date of the recurring order ('YYYY-MM-DD')
                 "readonly": 'y', -> possibility to change parameters of the recurring order by user ('y', 'n')
                 "state": 'y' -> default state of the recurring order after opening url of the order ('y', 'n')
@@ -100,6 +100,74 @@ class Checkout(Resource):
         result = self.api.post(path, data=params, headers=self.__headers__)
 
         return self.response(result)
+
+    def open_banking(self, data):
+        """
+        Method to generate checkout url for Open Banking (OPB) payment
+        :param data: order data
+        data = {
+            "currency": "GEL",
+            "amount": 10000,
+            "payment_method": "tbc" -> 'tbc','bog','liberty','credo','x'
+        }
+        :return: api response
+
+        IMPORTANT: the returned `checkout_url` is a bank-app deeplink /
+        SCA url, not a hosted Flitt page. Pass it UNMODIFIED to the
+        customer's device as the direct result of an explicit user tap
+        (an OS-level url intent on mobile, or a QR code on desktop).
+        Never auto-redirect to it, never rewrite or append parameters
+        to it, never open it in an iframe or hidden webview, and never
+        allowlist-validate the bank host yourself. Confirm payment via
+        the Flitt server callback or Order.status - never from the
+        client-side return alone.
+        """
+        payment_method = data.get('payment_method', 'x')
+        self._validate_payment_method(
+            payment_method, ('tbc', 'bog', 'liberty', 'credo', 'x'))
+        opb_data = {
+            'payment_systems': 'opb',
+            'payment_method': payment_method
+        }
+        opb_data.update(data)
+
+        return self.url(opb_data)
+
+    def installments(self, data):
+        """
+        Method to generate checkout url for Installments payment
+        :param data: order data
+        data = {
+            "currency": "GEL",
+            "amount": 5000, -> minimum order amount is 50 GEL
+            "payment_method": "tbc" -> 'tbc' or 'x' (TBC-only rollout)
+        }
+        :return: api response
+
+        See open_banking() docstring for checkout_url handling rules -
+        the same restrictions apply here.
+        """
+        payment_method = data.get('payment_method', 'x')
+        self._validate_payment_method(payment_method, ('tbc', 'x'))
+        installments_data = {
+            'payment_systems': 'installments',
+            'payment_method': payment_method
+        }
+        installments_data.update(data)
+
+        return self.url(installments_data)
+
+    @staticmethod
+    def _validate_payment_method(payment_method, allowed):
+        """
+        Validation payment_method against allowed values
+        :param payment_method: payment method to validate
+        :param allowed: tuple of allowed values
+        :return: exception
+        """
+        if payment_method not in allowed:
+            raise ValueError(
+                "Incorrect payment_method. %s is allowed" % (allowed,))
 
     @staticmethod
     def _validate_recurring_data(data):

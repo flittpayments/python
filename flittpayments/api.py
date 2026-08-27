@@ -3,12 +3,37 @@ from flittpayments.configuration import (__api_url__, __protocol__, __r_type__)
 from flittpayments import exceptions
 
 import os
+import re
 import requests
 import logging
 import flittpayments.helpers as helper
 import flittpayments.utils as utils
 
 log = logging.getLogger(__name__)
+
+# Field names that must never appear in plaintext in debug logs (PAN/CVV/
+# IBAN data). This only affects what gets written to the log - the actual
+# outbound/inbound payload is untouched.
+_SENSITIVE_FIELDS = ('card_number', 'cvv2', 'receiver_iban')
+
+
+def _mask_sensitive(text):
+    """
+    Redact sensitive payment fields from a serialized request/response
+    body (json/xml/form) before it is written to the debug log.
+    :param text: serialized data string, or None
+    :return: masked string safe for logging
+    """
+    if not text:
+        return text
+    masked = text
+    for field in _SENSITIVE_FIELDS:
+        masked = re.sub(r'("%s"\s*:\s*")[^"]*(")' % field,
+                        r'\1***\2', masked)
+        masked = re.sub(r'(<%s>)[^<]*(</%s>)' % (field, field),
+                        r'\1***\2', masked)
+        masked = re.sub(r'(%s=)[^&]*' % field, r'\1***', masked)
+    return masked
 
 
 class Api(object):
@@ -22,10 +47,12 @@ class Api(object):
         :arg request_type request type allowed json, xml, form
         :arg api_domain api domain
         :arg api_protocol allowed protocols 1.0, 2.0
+        :arg timeout request timeout in seconds, default 30
         """
         self.merchant_id = kwargs.get('merchant_id', '')
         self.secret_key = kwargs.get('secret_key', '')
         self.request_type = kwargs.get('request_type', __r_type__)
+        self.timeout = kwargs.get('timeout', 30)
         if not self.merchant_id or not self.secret_key:
             self.merchant_id = os.environ.get('CLOUDIPSP_MERCHANT_ID', '')
             self.secret_key = os.environ.get('CLOUDIPSP_SECRETKEY', '')
@@ -56,10 +83,11 @@ class Api(object):
         """
         log.debug('Request Type: %s' % self.request_type)
         log.debug('URL: %s' % url)
-        log.debug('Data: %s' % str(data))
+        log.debug('Data: %s' % _mask_sensitive(str(data)))
         log.debug('Headers: %s' % str(headers))
 
-        response = requests.request(method, url, data=data, headers=headers)
+        response = requests.request(method, url, data=data, headers=headers,
+                                    timeout=self.timeout)
         return self._response(response, response.content.decode('utf-8'))
 
     def _response(self, response, content):
@@ -71,7 +99,7 @@ class Api(object):
         status = response.status_code
 
         log.debug('Status: %s' % str(status))
-        log.debug('Content: %s' % content)
+        log.debug('Content: %s' % _mask_sensitive(content))
 
         if status in (200, 201):
             return content
@@ -79,7 +107,7 @@ class Api(object):
         raise exceptions.ServiceError(
             'Response code is: {status}'.format(status=status))
 
-    def post(self, url, data=list, headers=None):
+    def post(self, url, data=None, headers=None):
         """
         :param url: endpoint api url
         :param data: request data
@@ -87,6 +115,7 @@ class Api(object):
         :return: request
         """
         log.debug('Protocol version: %s' % self.request_type)
+        data = data if data is not None else {}
 
         if 'merchant_id' not in data:
             data['merchant_id'] = self.merchant_id

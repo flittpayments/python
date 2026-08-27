@@ -87,3 +87,29 @@ class CheckoutTest(TestCase):
                          'application/json; charset=utf-8')
         self.assertIn('checkout_url', response)
         self.assertEqual(len(response.get('checkout_url')) > 0, True)
+
+    def test_open_banking(self):
+        data = self.data.get('checkout_data').copy()
+        data.update(self.data.get('open_banking_data'))
+        response = self.checkout.open_banking(data)
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertIn('checkout_url', response)
+        self.assertEqual(len(response.get('checkout_url')) > 0, True)
+
+    def test_open_banking_invalid_payment_method(self):
+        data = self.data.get('checkout_data').copy()
+        data.update({'payment_method': 'invalid'})
+        self.assertRaises(ValueError, self.checkout.open_banking, data)
+
+    def test_installments(self):
+        data = self.data.get('checkout_data').copy()
+        data.update(self.data.get('installments_data'))
+        response = self.checkout.installments(data)
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertIn('checkout_url', response)
+        self.assertEqual(len(response.get('checkout_url')) > 0, True)
+
+    def test_installments_invalid_payment_method(self):
+        data = self.data.get('checkout_data').copy()
+        data.update({'payment_method': 'bog'})
+        self.assertRaises(ValueError, self.checkout.installments, data)

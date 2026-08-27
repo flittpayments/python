@@ -68,6 +68,27 @@ class Payment(Resource):
         result = self.api.post(path, data=params, headers=self.__headers__)
         return self.response(result)
 
+    def ibancredit(self, data):
+        """
+        Method for IBAN credit (withdrawal to IBAN account)
+        :param data: payment data
+        :return: api response
+        """
+        path = '/ibancredit/'
+        self.order_id = data.get('order_id') or helper.generate_order_id()
+        order_desc = data.get('order_desc') or helper.get_desc(self.order_id)
+        params = {
+            'order_id': self.order_id,
+            'order_desc': order_desc,
+            'amount': data.get('amount', ''),
+            'currency': data.get('currency', ''),
+            'receiver_iban': data.get('receiver_iban', '')
+        }
+        helper.check_data(params)
+        params.update(data)
+        result = self.api.post(path, data=params, headers=self.__headers__)
+        return self.response(result)
+
     def reports(self, data):
         """
         Method to get payment reports from date range

@@ -4,6 +4,7 @@ from flittpayments.configuration import __sign_sep__ as sep
 from flittpayments.exceptions import RequestError
 
 import flittpayments.utils as utils
+import hmac
 import uuid
 
 
@@ -93,7 +94,7 @@ def is_valid(data, secret_key, protocol):
     signature = get_signature(secret_key=secret_key,
                               params=data,
                               protocol=protocol)
-    return result_signature == signature
+    return hmac.compare_digest(str(result_signature), str(signature))
 
 
 def is_approved(data, secret_key, protocol):

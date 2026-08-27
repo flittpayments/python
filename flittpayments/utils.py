@@ -5,7 +5,8 @@ import re
 import json
 import base64
 import six.moves.urllib as urllib
-import xml.etree.cElementTree as ElementTree
+import xml.sax.saxutils as saxutils
+import defusedxml.ElementTree as ElementTree
 
 
 def to_b64(data):
@@ -105,17 +106,18 @@ def _data2xml(d):
         for sub_elem in d:
             result_list.append(_data2xml(sub_elem))
 
-        return ''.join(d)
+        return ''.join(result_list)
 
     if isinstance(d, dict):
         for tag_name, sub_obj in d.items():
-            result_list.append("<%s>" % tag_name)
+            safe_tag = saxutils.escape(tag_name)
+            result_list.append("<%s>" % safe_tag)
             result_list.append(_data2xml(sub_obj))
-            result_list.append("</%s>" % tag_name)
+            result_list.append("</%s>" % safe_tag)
 
         return ''.join(result_list)
 
-    return "%s" % d
+    return saxutils.escape("%s" % d)
 
 
 def _parse(node):
