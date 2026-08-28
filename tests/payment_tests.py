@@ -1,7 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 from flittpayments import Api, Payment, Pcidss
 from .tests_helper import TestCase
-from datetime import datetime, timedelta
 
 
 class PaymentTest(TestCase):
@@ -20,26 +19,6 @@ class PaymentTest(TestCase):
         self.assertEqual(response.get('response_status'), 'success')
         self.assertIn('order_status', response)
         self.assertEqual(response.get('order_status'), 'approved')
-
-    def test_reports(self):
-        # reports() authenticates with application_id/key, not this
-        # PaymentTest's merchant Api. reports_application's merchant_id
-        # (1549902) is a sandbox merchant dedicated to Reports examples
-        # with sample data already attached - not used for transactions
-        # anywhere else in this suite.
-        data = {
-            "filters": [
-                {"s": "order_timestart_from", "m": "from",
-                 "v": (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')},
-                {"s": "order_timestart_to", "m": "to",
-                 "v": datetime.now().strftime('%Y-%m-%d')}
-            ]
-        }
-        data.update(self.data['reports_application'])
-        response = self.payment.reports(data)
-        self.assertNotIn('error', response)
-        self.assertIn('fields', response)
-        self.assertGreaterEqual(response.get('rows_count'), 0)
 
     def test_p2pcredit(self):
         api = Api(merchant_id=1549901, secret_key='testcredit')

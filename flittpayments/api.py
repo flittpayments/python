@@ -2,10 +2,12 @@ from __future__ import absolute_import, unicode_literals
 from flittpayments.configuration import (__api_url__, __protocol__, __r_type__,
                                          __version__)
 from flittpayments import exceptions
+from flittpayments._compat import resolve
+from flittpayments.transport import BaseTransport, SyncTransport
 
 import os
 import re
-import requests
+import requests  # Kept for the legacy flittpayments.api.requests patch path.
 import logging
 import flittpayments.helpers as helper
 import flittpayments.utils as utils
@@ -47,11 +49,18 @@ class Api(object):
         :arg api_domain api domain
         :arg api_protocol allowed protocols 1.0, 2.0
         :arg timeout request timeout in seconds, default 30
+        :arg transport BaseTransport implementation; SyncTransport by default
         """
         self.merchant_id = kwargs.get('merchant_id', '')
         self.secret_key = kwargs.get('secret_key', '')
         self.request_type = kwargs.get('request_type', __r_type__)
         self.timeout = kwargs.get('timeout', 30)
+        transport = kwargs.get('transport')
+        if transport is None:
+            transport = SyncTransport()
+        if not isinstance(transport, BaseTransport):
+            raise TypeError('transport must be an instance of BaseTransport')
+        self.transport = transport
         if not self.merchant_id or not self.secret_key:
             self.merchant_id = os.environ.get('CLOUDIPSP_MERCHANT_ID', '')
             self.secret_key = os.environ.get('CLOUDIPSP_SECRETKEY', '')
@@ -89,9 +98,21 @@ class Api(object):
         log.debug('Data: %s' % _mask_sensitive(str(data)))
         log.debug('Headers: %s' % str(headers))
 
-        response = requests.request(method, url, data=data, headers=headers,
-                                    timeout=self.timeout)
-        return self._response(response, response.content.decode('utf-8'))
+        response = self.transport.request(
+            method,
+            url,
+            data=data,
+            headers=headers,
+            timeout=self.timeout
+        )
+        return resolve(response, self._transport_response)
+
+    def _transport_response(self, response):
+        """Normalize a transport response before applying API status rules."""
+        content = response.content
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+        return self._response(response, content)
 
     def _response(self, response, content):
         """
@@ -109,6 +130,12 @@ class Api(object):
 
         raise exceptions.ServiceError(
             'Response code is: {status}'.format(status=status))
+
+    def close(self):
+        """Close a synchronous transport, if it exposes ``close``."""
+        close = getattr(self.transport, 'close', None)
+        if close is not None:
+            return close()
 
     def post(self, url, data=None, headers=None):
         """

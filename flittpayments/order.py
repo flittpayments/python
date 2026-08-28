@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 from flittpayments.resources import Resource
+from flittpayments._compat import resolve
 
 import flittpayments.utils as utils
 import flittpayments.helpers as helper
@@ -56,6 +57,12 @@ class Order(Resource):
         :return: api response
         """
         status = self.status({'order_id': data.get('order_id', '')})
+        return resolve(
+            status,
+            lambda result: self._capture_full_from_status(data, result)
+        )
+
+    def _capture_full_from_status(self, data, status):
         additional_info = self._additional_info(status)
         actual_amount = int(status.get('actual_amount') or 0)
         client_fee = int(additional_info.get('client_fee') or 0)
@@ -95,6 +102,12 @@ class Order(Resource):
         :return: api response
         """
         status = self.status({'order_id': data.get('order_id', '')})
+        return resolve(
+            status,
+            lambda result: self._reverse_full_from_status(data, result)
+        )
+
+    def _reverse_full_from_status(self, data, status):
         additional_info = self._additional_info(status)
         actual_amount = int(status.get('actual_amount') or 0)
         reversal_amount = int(status.get('reversal_amount') or 0)

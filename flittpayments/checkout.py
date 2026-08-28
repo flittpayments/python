@@ -16,7 +16,7 @@ class Checkout(Resource):
         params = self._required(data)
         result = self.api.post(path, data=params, headers=self.__headers__)
 
-        return self.response(result)
+        return self.response(result, order_id=params['order_id'])
 
     def token(self, data):
         """
@@ -28,7 +28,7 @@ class Checkout(Resource):
         params = self._required(data)
         result = self.api.post(path, data=params, headers=self.__headers__)
 
-        return self.response(result)
+        return self.response(result, order_id=params['order_id'])
 
     def verification(self, data):
         """
@@ -45,7 +45,7 @@ class Checkout(Resource):
         params = self._required(data)
         result = self.api.post(path, data=params, headers=self.__headers__)
 
-        return self.response(result)
+        return self.response(result, order_id=params['order_id'])
 
     def subscription(self, data):
         """
@@ -57,10 +57,14 @@ class Checkout(Resource):
             "recurring_data": {
                 "every": 1, -> frequency of the recurring order (int)
                 "amount": 10000, -> amount of the recurring order (int)
-                "period": 'month', -> period of the recurring order ('day', 'week', 'month')
-                "start_time": '2020-07-24', -> start date of the recurring order ('YYYY-MM-DD')
-                "readonly": 'y', -> possibility to change parameters of the recurring order by user ('y', 'n')
-                "state": 'y' -> default state of the recurring order after opening url of the order ('y', 'n')
+                "period": 'month', -> period of the recurring order
+                    ('day', 'week', 'month')
+                "start_time": '2020-07-24', -> start date
+                    ('YYYY-MM-DD')
+                "readonly": 'y', -> can the user change recurring params
+                    ('y', 'n')
+                "state": 'y' -> default state after opening the order url
+                    ('y', 'n')
             }
         }
         :return: api response
@@ -87,7 +91,7 @@ class Checkout(Resource):
         params = self._required(subscription_data)
         result = self.api.post(path, data=params, headers=self.__headers__)
 
-        return self.response(result)
+        return self.response(result, order_id=params['order_id'])
 
     def subscription_stop(self, order_id):
         """
@@ -191,10 +195,10 @@ class Checkout(Resource):
         :param data:
         :return: parameters to send
         """
-        self.order_id = data.get('order_id') or helper.generate_order_id()
-        order_desc = data.get('order_desc') or helper.get_desc(self.order_id)
+        order_id = data.get('order_id') or helper.generate_order_id()
+        order_desc = data.get('order_desc') or helper.get_desc(order_id)
         params = {
-            'order_id': self.order_id,
+            'order_id': order_id,
             'order_desc': order_desc,
             'amount': data.get('amount', ''),
             'currency': data.get('currency', '')
