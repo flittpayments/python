@@ -274,7 +274,7 @@ shortcut and uses the default Reports domain. New code should use
 
 Tests
 -----------------
-First, install `tox` `<http://tox.readthedocs.org/en/latest/>`
+First, install `tox` `<https://tox.readthedocs.io/en/latest/>`
 
 To run testing:
 
