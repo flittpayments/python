@@ -34,6 +34,8 @@ setup(
     long_description=desc,
     author='Dmitriy Miroshnikov',
     packages=find_packages(where='.', exclude=('tests*',)),
+    package_data={'flittpayments': ['*.pyi', 'py.typed']},
+    include_package_data=True,
     install_requires=requires_list,
     extras_require=extras_require,
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
