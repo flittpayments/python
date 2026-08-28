@@ -1,0 +1,2 @@
+include flittpayments/*.pyi
+include flittpayments/py.typed

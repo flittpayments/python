@@ -49,6 +49,9 @@ url = client.url(data).get('checkout_url')
 
 Every SDK resource method becomes awaitable when its `Api` uses
 `AsyncTransport`; method names and request/response data stay the same.
+The package includes PEP 561 type information, so PyCharm and other type
+checkers infer an awaitable result for `AsyncTransport` and a regular `dict`
+for the default `SyncTransport`.
 
 ```python
 import asyncio
