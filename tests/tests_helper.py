@@ -35,3 +35,19 @@ class TestCase(TestCase):
                                     protocol='1.0')
         self.assertEqual(payment.get('response_status'), 'success')
         self.assertEqual(is_valid, True)
+
+    def test_is_approved(self):
+        payment = self.create_order()
+        self.assertEqual(payment.get('order_status'), 'approved')
+        is_approved = helpers.is_approved(data=payment,
+                                          secret_key=self.data['merchant']['secret'],
+                                          protocol='1.0')
+        self.assertEqual(is_approved, True)
+
+    def test_is_approved_missing_order_status(self):
+        # secret_key/protocol are irrelevant here - is_approved must raise
+        # before ever looking at the signature, so this needs no self.data.
+        with self.assertRaises(ValueError):
+            helpers.is_approved(data={'signature': 'x'},
+                                secret_key='test',
+                                protocol='1.0')

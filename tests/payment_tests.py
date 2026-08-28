@@ -22,17 +22,54 @@ class PaymentTest(TestCase):
         self.assertEqual(response.get('order_status'), 'approved')
 
     def test_reports(self):
+        # reports() authenticates with application_id/key, not this
+        # PaymentTest's merchant Api. reports_application's merchant_id
+        # (1549902) is a sandbox merchant dedicated to Reports examples
+        # with sample data already attached - not used for transactions
+        # anywhere else in this suite.
         data = {
-            "date_from": (datetime.now() - timedelta(minutes=240)).strftime('%d.%m.%Y %H:%M:%S'),
-            "date_to": datetime.now().strftime('%d.%m.%Y %H:%M:%S')
+            "filters": [
+                {"s": "order_timestart_from", "m": "from",
+                 "v": (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')},
+                {"s": "order_timestart_to", "m": "to",
+                 "v": datetime.now().strftime('%Y-%m-%d')}
+            ]
         }
+        data.update(self.data['reports_application'])
         response = self.payment.reports(data)
-        self.assertIsInstance(response, list)
+        self.assertNotIn('error', response)
+        self.assertIn('fields', response)
+        self.assertGreaterEqual(response.get('rows_count'), 0)
 
     def test_p2pcredit(self):
-        api = Api(merchant_id=1000, secret_key='testcredit')
+        api = Api(merchant_id=1549901, secret_key='testcredit')
         payment = Payment(api=api)
         response = payment.p2pcredit(self.data['payment_p2p'])
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertIn('order_status', response)
+
+    def test_p2pcredit_with_rectoken(self):
+        # Mirrors the README's P2P credit example: obtain a rectoken from a
+        # purchase, then credit that same card without a card number.
+        purchase_data = {'required_rectoken': 'Y'}
+        purchase_data.update(self.data['payment_pcidss_non3ds'])
+        rectoken = self.pcidss.step_one(purchase_data).get('rectoken')
+        self.assertTrue(rectoken)
+
+        api = Api(merchant_id=1549901, secret_key='testcredit')
+        payment = Payment(api=api)
+        data = {
+            'receiver_rectoken': rectoken
+        }
+        data.update(self.data['checkout_data'])
+        response = payment.p2pcredit(data)
+        self.assertEqual(response.get('response_status'), 'success')
+        self.assertEqual(response.get('order_status'), 'approved')
+
+    def test_ibancredit(self):
+        api = Api(merchant_id=1549901, secret_key='testcredit')
+        payment = Payment(api=api)
+        response = payment.ibancredit(self.data['payment_iban'])
         self.assertEqual(response.get('response_status'), 'success')
         self.assertIn('order_status', response)
 
