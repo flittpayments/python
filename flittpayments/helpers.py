@@ -52,8 +52,8 @@ def get_signature(secret_key, params, protocol):
 
 def get_reports_signature(key, application_id, date):
     """
-    Signature for the Reports API's token endpoint (portal.flitt.com) -
-    a completely separate scheme from get_signature() above: SHA512 over
+    Signature for the Company Reports API token endpoint. This is a
+    completely separate scheme from get_signature() above: SHA512 over
     key|application_id|date, not SHA1/HMAC over merchant request params.
     :param key: Reports application private key
     :param application_id: Reports application id

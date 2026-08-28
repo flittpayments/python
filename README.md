@@ -7,7 +7,7 @@ A payment service provider (PSP) offers shops online services for accepting elec
 
 Requirements
 ------------
-- Python (2.4, 2.7, 3.3, 3.4, 3.5, 3.6, 3.7)
+- Python 2.7 or Python 3.4+
 
 Dependencies
 ------------
@@ -19,6 +19,18 @@ Installation
 ```bash
 pip install flittpayments
 ```
+
+For asynchronous requests on Python 3.10 or newer, install the `httpx2`
+transport extra:
+
+```bash
+pip install "flittpayments[async]"
+```
+
+The synchronous API remains the default and keeps compatibility with Python
+2.7 and Python 3.4+. `AsyncTransport` requires Python 3.10+ because `httpx2`
+does not support older Python versions.
+
 ### Simple start
 
 ```python
@@ -32,6 +44,94 @@ data = {
 }
 url = client.url(data).get('checkout_url')
 ```
+
+### Asynchronous transport
+
+Every SDK resource method becomes awaitable when its `Api` uses
+`AsyncTransport`; method names and request/response data stay the same.
+
+```python
+import asyncio
+
+from flittpayments import Api, Payment
+from flittpayments.transport import AsyncTransport
+
+
+async def main():
+    async with AsyncTransport() as transport:
+        api = Api(
+            merchant_id=123,
+            secret_key="secret",
+            transport=transport,
+        )
+        payment = Payment(api)
+        response = await payment.recurring({
+            "amount": 100,
+            "currency": "GEL",
+            "rectoken": "token-from-an-earlier-payment",
+        })
+        print(response)
+
+
+asyncio.run(main())
+```
+
+A single resource instance is safe to reuse across concurrent tasks. Its
+`order_id` and response-backed attributes are task-local, so one request
+cannot overwrite another request's state:
+
+```python
+responses = await asyncio.gather(
+    payment.recurring(first_payment),
+    payment.recurring(second_payment),
+    payment.recurring(third_payment),
+)
+```
+
+Use the returned values in the parent task. Task-local attributes such as
+`payment.order_id` remain available inside the task that awaited the request
+and do not leak from child tasks after `gather()` completes.
+
+`SyncTransport` uses `requests` and is created automatically when
+`transport` is omitted. It can also be managed explicitly:
+
+```python
+from flittpayments import Api, Payment
+from flittpayments.transport import SyncTransport
+
+with SyncTransport() as transport:
+    api = Api(merchant_id=123, secret_key="secret", transport=transport)
+    response = Payment(api).recurring(data)
+```
+
+### Custom transport
+
+Custom transports inherit from `BaseTransport` and implement `request`. The
+method may return a response directly or an awaitable. The response object
+must expose `status_code` and `content` attributes.
+
+```python
+import requests
+
+from flittpayments.transport import BaseTransport
+
+
+class CustomTransport(BaseTransport):
+    def __init__(self):
+        self.session = requests.Session()
+
+    def request(self, method, url, data=None, headers=None, timeout=None):
+        return self.session.request(
+            method,
+            url,
+            data=data,
+            headers=headers,
+            timeout=timeout,
+        )
+```
+
+Complete runnable examples are available in `examples/async_recurring.py` and
+`examples/custom_transport.py`.
 
 ### Get order status
 
@@ -135,19 +235,20 @@ Same `checkout_url` handling rules as Open Banking above apply.
 
 ### Reports
 
-Unlike every other example above, this doesn't use `Api`'s `merchant_id`/`secret_key` at all -
-Reports is a separate service (`portal.flitt.com`) with its own `application_id`/`key`
-credentials and a short-lived bearer token instead of a per-request signature. `merchant_id`
-`1549902` below is a sandbox merchant dedicated to Reports examples with sample data already
-attached - it's for this example only, not for actual transactions elsewhere in this README.
-For your own reports, use your own `application_id`/`key` (issued separately from your
-merchant account) and your own `merchant_id`.
+Company Reports is a separate service with its own `application_id`/`key`
+credentials and a short-lived bearer token. It does not use `Api`'s
+`merchant_id` or `secret_key`. The default service domain is
+`portal.flitt.com`; pass `api_domain` to `CompanyReports` to override it.
+
+Merchant `1549902` below is dedicated to sandbox Reports examples and has
+sample data attached. For your own reports, use your own Reports credentials
+and merchant id.
 
 ```python
-from flittpayments import Api, Payment
+from flittpayments import Api, CompanyReports
 
-api = Api()  # reports() doesn't use Api's merchant_id/secret_key
-client = Payment(api=api)
+api = Api()  # supplies the transport and timeout only
+reports = CompanyReports(api=api)
 data = {
     "application_id": "1019",
     "key": "test",
@@ -158,8 +259,18 @@ data = {
         {"s": "order_timestart_to", "m": "to", "v": "2026-08-27"}
     ]
 }
-report = client.reports(data)
+report = reports.get(data)
 ```
+
+For a custom Reports deployment:
+
+```python
+reports = CompanyReports(api=api, api_domain="reports.example.com")
+```
+
+`Payment(api).reports(data)` remains available as a backward-compatible
+shortcut and uses the default Reports domain. New code should use
+`CompanyReports` directly.
 
 Tests
 -----------------
