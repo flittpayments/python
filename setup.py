@@ -3,8 +3,8 @@ from setuptools import find_packages, setup
 
 desc = """
     Flitt python sdk.
-    Docs   - https://https://docs.flitt.com/
-    README - https://https://github.com/flittpayments/python/blob/master/README.md
+    Docs   - https://docs.flitt.com/
+    README - https://github.com/flittpayments/python/blob/main/README.md
   """
 
 requires_list = [
