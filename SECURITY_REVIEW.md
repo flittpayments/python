@@ -54,12 +54,13 @@
 ### SEC-04 — Unpinned HTTP client dependency
 - **Severity:** Low-Medium | **Status:** Fixed in this PR
 - **File:** `setup.py`
-- **Description:** `requests`/`six` had no version floor at all. `requests` has had past releases
+- **Description:** `requests` had no version floor at all. `requests` has had past releases
   fixing proxy/`Authorization`-header leakage on cross-scheme/cross-host redirects and related issues;
   an unpinned floor means a very old, unpatched version could silently be installed.
-- **Fix:** Pinned `requests>=2.31.0`, `six>=1.12`. **Note:** confirm the exact
-  `requests` fixed-in version against the current CVE database before relying on `2.31.0` as gospel —
-  it's a reasonable modern floor, not a number tied to one specific verified CVE ID in this review.
+- **Fix:** Added version-appropriate `requests` bounds. The obsolete `six`
+  dependency was removed when the package became Python 3-only. **Note:** confirm
+  the exact `requests` fixed-in version against the current CVE database before
+  relying on a floor as a guarantee for a specific CVE.
 - **Risk if unaddressed:** No lower bound on a security-sensitive transitive dependency.
 
 ---
@@ -128,5 +129,5 @@ Requested as a best-practices/security/code-quality-only pass (no functional cha
 - [x] `helpers.py`: `hmac.compare_digest` in `is_valid`
 - [x] `api.py`: redact `card_number`/`cvv2`/`receiver_iban` in debug logs via `_mask_sensitive`
 - [x] `api.py`: fixed `Api.post`'s mutable/type-default `data=list` argument
-- [x] `setup.py`: pinned `requests>=2.31.0`, `six>=1.12`
+- [x] `setup.py`: added version-appropriate `requests` bounds and removed `six`
 - [x] `checkout.py`: corrected `subscription()`'s `period` docstring to match actual enforcement

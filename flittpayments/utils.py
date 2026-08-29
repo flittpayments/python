@@ -4,7 +4,7 @@ from collections import OrderedDict
 import re
 import json
 import base64
-import six.moves.urllib as urllib
+import urllib.parse
 
 
 def to_b64(data):

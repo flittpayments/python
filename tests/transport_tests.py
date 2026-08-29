@@ -1,16 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 
 import json
+import asyncio
 import sys
 import unittest
 
-try:
-    import asyncio
-except ImportError:  # pragma: no cover - Python 2.7
-    asyncio = None
-
 from flittpayments import (Api, Checkout, CompanyReports, Order, Payment,
                            Pcidss)
+from flittpayments._compat import resolve
 from flittpayments.exceptions import ServiceError
 from flittpayments.transport import (AsyncTransport, BaseTransport,
                                      SyncTransport)
@@ -202,23 +199,30 @@ class TransportTest(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 5),
                      'native await syntax requires Python 3.5+')
+    def test_async_resource_result_can_be_scheduled_as_a_task(self):
+        transport = QueueTransport([
+            json_response({
+                'response_status': 'success',
+                'order_status': 'approved',
+            })
+        ], loop=self.loop)
+        api = Api(merchant_id=1, secret_key='secret', transport=transport)
+
+        task = self.loop.create_task(Payment(api).recurring({
+            'amount': 100,
+            'currency': 'GEL',
+            'rectoken': 'token',
+        }))
+        response = self.loop.run_until_complete(task)
+
+        self.assertEqual(response['order_status'], 'approved')
+
+    @unittest.skipIf(sys.version_info < (3, 5),
+                     'native await syntax requires Python 3.5+')
     def test_resource_state_is_isolated_between_concurrent_tasks(self):
         transport = DelayedEchoTransport(self.loop)
         api = Api(merchant_id=1, secret_key='secret', transport=transport)
         payment = Payment(api)
-        namespace = {
-            'asyncio': asyncio,
-            'payment': payment,
-        }
-        exec(
-            'async def invoke(data):\n'
-            '    response = await payment.recurring(data)\n'
-            '    return (response, payment.order_id, payment.marker)\n'
-            'async def invoke_all(items):\n'
-            '    calls = [invoke(item) for item in items]\n'
-            '    return await asyncio.gather(*calls)\n',
-            namespace
-        )
         items = [
             {
                 'order_id': order_id,
@@ -229,9 +233,15 @@ class TransportTest(unittest.TestCase):
             for order_id in ('a', 'b', 'c')
         ]
 
-        results = self.loop.run_until_complete(
-            namespace['invoke_all'](items)
-        )
+        calls = [
+            resolve(
+                payment.recurring(item),
+                lambda response: (
+                    response, payment.order_id, payment.marker)
+            )
+            for item in items
+        ]
+        results = self.loop.run_until_complete(asyncio.gather(*calls))
 
         for expected_order_id, result in zip(('a', 'b', 'c'), results):
             response, task_order_id, task_marker = result
