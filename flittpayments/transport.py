@@ -3,13 +3,10 @@ from __future__ import absolute_import, unicode_literals
 import sys
 from abc import ABCMeta, abstractmethod
 
-import six
-
 from flittpayments._compat import resolve
 
 
-@six.add_metaclass(ABCMeta)
-class BaseTransport(object):
+class BaseTransport(object, metaclass=ABCMeta):
     """Abstract HTTP transport used by :class:`flittpayments.Api`."""
 
     @abstractmethod

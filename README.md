@@ -7,12 +7,11 @@ A payment service provider (PSP) offers shops online services for accepting elec
 
 Requirements
 ------------
-- Python 2.7 or Python 3.4+
+- Python 3.5+
 
 Dependencies
 ------------
 - requests
-- six
 
 Installation
 ------------
@@ -27,9 +26,9 @@ transport extra:
 pip install "flittpayments[async]"
 ```
 
-The synchronous API remains the default and keeps compatibility with Python
-2.7 and Python 3.4+. `AsyncTransport` requires Python 3.10+ because `httpx2`
-does not support older Python versions.
+The synchronous API remains the default and supports Python 3.5+.
+`AsyncTransport` requires Python 3.10+ because `httpx2` does not support
+older Python versions.
 
 ### Simple start
 
